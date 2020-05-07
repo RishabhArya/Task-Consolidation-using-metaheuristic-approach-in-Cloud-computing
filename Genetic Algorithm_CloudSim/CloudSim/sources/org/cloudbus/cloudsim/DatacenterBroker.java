@@ -41,7 +41,7 @@ import org.cloudbus.cloudsim.lists.VmList;
  * @author Anton Beloglazov
  * @since CloudSim Toolkit 1.0
  */
-public class DatacenterBroker extends SimEntity {
+public class DatacenterBroker1 extends SimEntity {
 
 	/** The vm list. */
 	protected List<? extends Vm> vmList;
@@ -93,13 +93,9 @@ public class DatacenterBroker extends SimEntity {
 	 */
 	
 	//list to store initial population
-	protected List<ArrayList<ArrayList<Integer>>> Population=new ArrayList<ArrayList<ArrayList<Integer>>>();
-	//list to store initial population
 	protected List<ArrayList<ArrayList<Integer>>> PopulationGeneticTemp=new ArrayList<ArrayList<ArrayList<Integer>>>();
 	//list to store initial population
 	protected List<ArrayList<ArrayList<Integer>>> PopulationGenetic=new ArrayList<ArrayList<ArrayList<Integer>>>();	
-	//list to store best solution
-	protected ArrayList<ArrayList<Integer>> bestSoln=new ArrayList<ArrayList<Integer>>();
 	
 	//no of initial solutions
 	protected int solutioncount=20;
@@ -108,7 +104,7 @@ public class DatacenterBroker extends SimEntity {
 	//fitness ratio of solutions in population
 	protected double [][] fitnessratio=new double[solutioncount][2];
 	//fitness of solutions in population after mutation
-	protected double [][] fitnessaftermutation=new double[210][2];
+	protected double [][] fitnessaftermutation=new double[400][2];
 	//to store new solution
 	protected ArrayList<ArrayList<Integer>> newsol=new ArrayList<ArrayList<Integer>>();
 	
@@ -116,7 +112,7 @@ public class DatacenterBroker extends SimEntity {
 	protected double vmTimes[][];
 	protected int avg;
 	
-	public DatacenterBroker(String name) throws Exception {
+	public DatacenterBroker1(String name) throws Exception {
 		super(name);
 
 		setVmList(new ArrayList<Vm>());
@@ -414,9 +410,12 @@ public class DatacenterBroker extends SimEntity {
 	 
 	    //to store the final cloudlet assigning order
 	    List<ArrayList<Integer>> Assign=new ArrayList<ArrayList<Integer>>();
+	    this.avg=(getCloudletList().size()/getVmsCreatedList().size())+1;
 	    
 		createPopulation();
 		
+		
+		for(int z=0;z<40;z++) {
 		//initialize fitness of each solution in initial population
 	    for(int i=0;i<solutioncount;i++)
 		{
@@ -439,56 +438,34 @@ public class DatacenterBroker extends SimEntity {
 	    float totalfitnesssum = 0;
 	    for(int i=0;i<solutioncount;i++)
 		{
-			totalfitnesssum = (float) (fitness[i][1] + totalfitnesssum);
+			totalfitnesssum = (float)(fitness[i][1] + totalfitnesssum);
 		}
 		//calculate fitness ratio of each solution in initial population --Selection
 		for(int i=0;i<solutioncount;i++)
 		{
 			fitnessratio[i][0]=i;
-			fitnessratio[i][1]=totalfitnesssum/fitness[i][1];
-		}
-		System.out.println("\nFitness Of Initial Solutions Genetic-");
-		//display fitness of initial population
-		for(int i=0;i<solutioncount;i++)
-		{
-			System.out.println("Solution-"+i+" "+fitness[i][1]);
-		}
-		System.out.println("\nTotal Fitness Sum is:"+ totalfitnesssum+"\n");
-		//display fitness ratio of initial population
-		for(int i=0;i<solutioncount;i++)
-		{
-			System.out.println("Solution firness ratio is-"+i+" "+fitnessratio[i][1]);
+			fitnessratio[i][1]=fitness[i][1]/totalfitnesssum;
 		}
 		
-		// Create crossover population
-		//int counter = solutioncount; 
+		//crossover
 		for(int i=0; i<solutioncount;i++)
 		{
 			for(int j=i+1;j<solutioncount;j++)
 			{
 				//create crossover population --Crossover
-				newsol=crosover(PopulationGenetic.get(i),PopulationGenetic.get(j));
+				//generate a random number between 0 to VmsCreatedList().size()-1 
+				int random=new Random().nextInt(getVmsCreatedList().size());
+				newsol=crosover(PopulationGenetic.get(i),PopulationGenetic.get(j),random);
+				checkNewSol();
+				PopulationGenetic.add(newsol);
+				newsol=crosover(PopulationGenetic.get(j),PopulationGenetic.get(i),random);
 	    		checkNewSol();
 	    		PopulationGenetic.add(newsol);
-				//System.out.println("Value of i -"+ i + " Value of j -" + j);
-				//System.out.println("Value of counter is -"+counter);
-				//counter++;
 			}
-		}
-		//display the Genetic poplulation after crossover
-		System.out.println("\nGenetic Population after crossover-");
-		for(int i=0;i<PopulationGenetic.size();i++)
-		{
-			System.out.println("SOLUTION-"+i+" "+PopulationGenetic.get(i));
 		}
 		//create genetic mutation
 		createGeneticMutation();
-		//display the Genetic poplulation after mutatuion
-		System.out.println("\nGenetic Population after mutation-");
-		for(int i=0;i<PopulationGenetic.size();i++)
-		{
-			System.out.println("SOLUTION-"+i+" "+PopulationGenetic.get(i));
-		}
+		
 		//initialize fitness of each solution in initial population
 	    for(int i=0;i<PopulationGenetic.size();i++)
 		{
@@ -501,21 +478,13 @@ public class DatacenterBroker extends SimEntity {
 			fitnessaftermutation[i][0]=i;
 			fitnessaftermutation[i][1]=checkFitness(PopulationGenetic.get(i));
 		}
-		//display fitness of Genetic Population after mutation
-		System.out.println("\n Solutions Fitness after mutation is - ");
-		for(int i=0;i<PopulationGenetic.size();i++)
-		{
-			System.out.println("Solution fitness after mutation- "+i+" "+fitnessaftermutation[i][1]);
-		}
+		
+		//sort the fitnesses of all the solutions in ascending order
 		sortbyColumn(fitnessaftermutation,1);
-		System.out.println("\nSolutions Fitness after mutation is sorted- ");
-		for(int i=0;i<PopulationGenetic.size();i++)
-		{
-			System.out.println("Solution fitness after mutation is sorted- "+(int)fitnessaftermutation[i][0]+" "+fitnessaftermutation[i][1]);
-		}	
-		// Adding best solution to initial population again for iteration
+			
+		// Adding best solutions to initial population again for iteration
 		// Copying the Genetic Population to tempory location
-		for(int i = PopulationGenetic.size()-1;i>PopulationGenetic.size()-solutioncount;i--) {
+		for(int i =0;i<solutioncount;i++) {
 			int ele = (int)fitnessaftermutation[i][0];
 			PopulationGeneticTemp.add(PopulationGenetic.get(ele));
 		}		
@@ -524,49 +493,59 @@ public class DatacenterBroker extends SimEntity {
 		for(int i =0;i<PopulationGeneticTemp.size();i++) {
 			PopulationGenetic.add(PopulationGeneticTemp.get(i));
 		}
-		//Final Genetic Population
-		System.out.println("\nGenetic Population after Genetic ALgorithum is applied-");
-		for(int i=0;i<PopulationGenetic.size();i++)
+		PopulationGeneticTemp.clear();
+		
+		if(z<39)
 		{
-			System.out.println("SOLUTION-"+i+" "+PopulationGenetic.get(i));
+			System.out.println("Fitness after cycle "+z+"="+fitnessaftermutation[0][1]);
+			System.out.println("Arrangement of cloudlets-");
+			System.out.println(PopulationGenetic.get(0));
 		}
-	
-	}
-	
-	public static void sortbyColumn(double arr[][], int col) 
-    { 
-        // Using built-in sort function Arrays.sort 
-        Arrays.sort(arr, new Comparator<double[]>() { 
-   
-          @Override              
-          // Compare values according to columns 
-          public int compare(final double[] entry1,final double[] entry2) { 
-  
-            // To sort in descending order revert  
-            // the '>' Operator 
-            if (entry1[col] > entry2[col]) 
-                return 1; 
-            else
-                return -1; 
-          } 
-        });  // End of function call sort(). 
-    } 
-	//Create Genetic Mutation
-	protected void createGeneticMutation() {
-		for(int i = 0 ;i < PopulationGenetic.size();i++) {
-		double randomnum = Math.random();
-        if(randomnum > 0.5) {
-        	//System.out.println("Solution Number going to be Genetically Mutated are- "+i);
-    		int random1=new Random().nextInt(PopulationGenetic.get(i).size());
-    		int random2=new Random().nextInt(PopulationGenetic.get(i).size());
-    		int random3=new Random().nextInt(PopulationGenetic.get(i).get(random1).size());
-    		int random4=new Random().nextInt(PopulationGenetic.get(i).get(random2).size());
-    		int temp = PopulationGenetic.get(i).get(random1).get(random3);
-    		PopulationGenetic.get(i).get(random1).set(random3,PopulationGenetic.get(i).get(random2).get(random4));
-    		PopulationGenetic.get(i).get(random2).set(random4,temp);
-        }
+		else
+		{
+			System.out.println("Final Solution Fitness-"+fitnessaftermutation[0][1]);
+			System.out.println("Arrangement of cloudlets-");
+			System.out.println(PopulationGenetic.get(0));
 		}
-	}
+	    }
+		
+	    //initialize the list
+		for(int i=0;i<getCloudletList().size();i++)
+		{
+			Assign.add(new ArrayList<Integer>());
+		}
+				
+	    //store vm numbers of cloudlets in list
+		for(int i=0;i<getVmsCreatedList().size();i++)
+	    {
+			for(int j=0;j<PopulationGenetic.get(0).get(i).size();j++)
+			{
+					Assign.get(PopulationGenetic.get(0).get(i).get(j)).add(i);
+			}
+		}
+				
+		System.out.println("\nFINAL CLOUDLET ALLOCATIONS-");
+		System.out.println(Assign);
+				
+		int vmIndex = 0;
+		for (Cloudlet cloudlet : getCloudletList()) {
+			Vm vm;
+			vm =getVmsCreatedList().get(Assign.get(vmIndex).get(0));
+					
+			Log.printLine(CloudSim.clock() + ": " + getName() + ": Sending cloudlet "
+					+ cloudlet.getCloudletId() + " to VM #" + vm.getId());
+			bindCloudletToVm(cloudlet.getCloudletId(),vm.getId());
+			sendNow(getVmsToDatacentersMap().get(vm.getId()), CloudSimTags.CLOUDLET_SUBMIT, cloudlet);
+			cloudletsSubmitted++;
+			vmIndex = (vmIndex + 1);
+			getCloudletSubmittedList().add(cloudlet);
+		}
+
+		// remove submitted cloudlets from waiting list
+		for (Cloudlet cloudlet : getCloudletSubmittedList()) {
+				getCloudletList().remove(cloudlet);
+		}
+    }
 	
 	//create intial population
 	protected void createPopulation()
@@ -583,24 +562,24 @@ public class DatacenterBroker extends SimEntity {
 			}
 		}
 		//write population in text file
-		//writefile();
+		//writeFile();
 		//read population in text file
-		readfile();
+		readFile();
 	}
 
 	//write population to a file
-	protected void writefile() {
+	protected void writeFile() {
 		try{    
 		    FileWriter fw=new FileWriter("InitialPopulation.txt");    
 		    int element = 0;
 		    String str2;
 		    for(int i=0;i <solutioncount;i++)
 			{
-		    	for(int j=0;j<Population.get(i).size();j++) 
+		    	for(int j=0;j<PopulationGenetic.get(i).size();j++) 
 		        {
-					for(int k = 0; k<Population.get(i).get(j).size();k++) 
+					for(int k = 0; k<PopulationGenetic.get(i).get(j).size();k++) 
 		        	{	
-						element = Population.get(i).get(j).get(k);
+						element = PopulationGenetic.get(i).get(j).get(k);
 					    str2 = Integer.toString(element); 
 						fw.write(str2);
 						fw.write(" ");
@@ -615,27 +594,39 @@ public class DatacenterBroker extends SimEntity {
 	}
 	
 	//read population from the file
-	protected void readfile() 
+	protected void readFile() 
 	{
 		try 
 		{	
-			File myObj = new File("testout0001.txt");
+			File myObj = new File("InitialPopulation.txt");
 			Scanner myReader = new Scanner(myObj);
 			int q = 0 ;int w =0;
 			while (myReader.hasNextLine()) 
 			{
 				String data = myReader.nextLine();
 				String[] dataSplit = data.trim().split(" ");
-				if(dataSplit.length == 1 ) {
-					q++;
-					w = 0 ;
+				if(dataSplit.length == 1)
+				{
+					if(dataSplit[0].equals("NEW")) {
+						q++;
+					    w = 0 ;
+					}
+					else if(dataSplit[0].equals(""))
+					{
+						w++;
+					}
+					else
+					{
+						PopulationGenetic.get(q).get(w).add(Integer.parseInt(dataSplit[0].trim()));
+						w++;
+					}
 				}
 				if(dataSplit.length != 1 ) {
 				int[] dataSplitInt = new int[dataSplit.length];
 				for (int i = 0; i < dataSplit.length; i++)
 				{
-					String var = dataSplit[i].trim();
-					dataSplitInt[i] = Integer.parseInt(var);
+					String var1 = dataSplit[i].trim();
+					dataSplitInt[i] = Integer.parseInt(var1);
 					PopulationGenetic.get(q).get(w).add(dataSplitInt[i]);
 				}
 				w++;
@@ -653,7 +644,7 @@ public class DatacenterBroker extends SimEntity {
 	  	System.out.println("\nGenetic Population-");
 		for(int i=0;i<solutioncount;i++)
 		{
-			System.out.println("SOLUTION-"+i+" "+PopulationGenetic.get(i));
+			System.out.println("INITIAL POPULATION-"+i+" "+PopulationGenetic.get(i));
 		}
 	}
 	
@@ -703,24 +694,8 @@ public class DatacenterBroker extends SimEntity {
 		return value;
 	}
 	
-	//to get best solution no
-	protected int getBestSolutionNo(double arr[][])
-	{
-		int bestsolno=-1;
-		double bestfitness=Integer.MAX_VALUE;
-		for(int i=0;i<solutioncount;i++) 
-		{
-			if(arr[i][1]<bestfitness)
-			{
-				bestfitness=arr[i][1];
-				bestsolno=i;
-			}
-		}
-		return bestsolno;
-	}
-	
 	//to generate new solution by crossover	
-	protected ArrayList<ArrayList<Integer>> crosover(ArrayList<ArrayList<Integer>> sol1,ArrayList<ArrayList<Integer>> sol2)
+	protected ArrayList<ArrayList<Integer>> crosover(ArrayList<ArrayList<Integer>> sol1,ArrayList<ArrayList<Integer>> sol2,int random)
 	{
 		//initialize a 2d arraylist to store new solution
 		ArrayList<ArrayList<Integer>> newsol=new ArrayList<ArrayList<Integer>>();
@@ -730,8 +705,7 @@ public class DatacenterBroker extends SimEntity {
 			newsol.add(new ArrayList<Integer>());
 		 }
 		
-		//generate a random number between 0 to 11
-		int random=new Random().nextInt(getVmsCreatedList().size());
+		
 		for(int i=0;i<getVmsCreatedList().size();i++)
 		{
 			if(i<=random)
@@ -761,8 +735,6 @@ public class DatacenterBroker extends SimEntity {
 		{
 			cloudletAssign.add(new ArrayList<Integer>());
 		}
-		
-		
 		//store vm numbers of cloudlets in list
 		for(int i=0;i<getVmsCreatedList().size();i++)
 		{
@@ -775,11 +747,6 @@ public class DatacenterBroker extends SimEntity {
 		//check the count of vms on which clouldlet is assigned and correct the solution
 		for(int i=0;i<getCloudletList().size();i++)
 		{
-//			if(cloudletAssign.get(i).size()==0)
-//			{
-//				System.out.println(i+" "+cloudletAssign.get(i));
-//				AssignUnassignedCloudlet(i);
-//			}
 			if(cloudletAssign.get(i).size()>1)
 			{
 				deleteMultipleAssignedCloudlet(i,cloudletAssign.get(i));
@@ -890,6 +857,54 @@ public class DatacenterBroker extends SimEntity {
 	        }
 	    }
 	}
+	
+	//Create Genetic Mutation
+	protected void createGeneticMutation() {
+		for(int i = 0 ;i < PopulationGenetic.size();i++) {
+			double randomnum = Math.random();
+	        if(randomnum > 0.5) {
+	        	//System.out.println("Solution Number going to be Genetically Mutated are- "+i);
+	    		int random1=new Random().nextInt(getVmsCreatedList().size());
+	    		int random2=new Random().nextInt(getVmsCreatedList().size());
+	    		int firstplace=PopulationGenetic.get(i).get(random1).size();
+	    		int secondplace=PopulationGenetic.get(i).get(random2).size();
+	    		if(firstplace!=0&&secondplace!=0)
+	    		{
+	    			int random3=new Random().nextInt(firstplace);
+	    		    int random4=new Random().nextInt(secondplace);
+	    		    int temp = PopulationGenetic.get(i).get(random1).get(random3);
+	    		    PopulationGenetic.get(i).get(random1).set(random3,PopulationGenetic.get(i).get(random2).get(random4));
+	    		    PopulationGenetic.get(i).get(random2).set(random4,temp);
+	    		}
+	        }
+	    	else
+	    	{
+	    		continue;
+	    	}
+	    }
+	}
+	
+	//to sort the fitness of solutions after mutation in increasing order
+	public static void sortbyColumn(double arr[][], int col) 
+	{ 
+		// Using built-in sort function Arrays.sort 
+	    Arrays.sort(arr, new Comparator<double[]>() { 
+	   
+	    @Override              
+	    // Compare values according to columns 
+	    public int compare(final double[] entry1,final double[] entry2) { 
+	  
+	         // To sort in descending order revert  
+	         // the '>' Operator 
+	         if (entry1[col] > entry2[col]) 
+	             return 1; 
+	         else if(entry1[col]<entry2[col])
+	             return -1; 
+	         else
+	        	 return 0;
+	       } 
+	    });  // End of function call sort(). 
+	} 
 	
 	/**
 	 * Destroy the virtual machines running in datacenters.

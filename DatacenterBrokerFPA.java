@@ -8,6 +8,9 @@
 
 package org.cloudbus.cloudsim;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -16,6 +19,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Scanner;
 
 import org.cloudbus.cloudsim.core.CloudSim;
 import org.cloudbus.cloudsim.core.CloudSimTags;
@@ -377,10 +381,14 @@ public class DatacenterBroker extends SimEntity {
 //					continue;
 //				}
 //			}
+//			
+//			double networkdelay=getNetworkDelay(getId(),vm.getId());
+//			System.out.println("delay is "+networkdelay);
 //
 //			Log.printLine(CloudSim.clock() + ": " + getName() + ": Sending cloudlet "
 //					+ cloudlet.getCloudletId() + " to VM #" + vm.getId());
-//			cloudlet.setVmId(vm.getId());
+//			bindCloudletToVm(cloudlet.getCloudletId(),vm.getId());
+//			//cloudlet.setVmId(vm.getId());
 //			sendNow(getVmsToDatacentersMap().get(vm.getId()), CloudSimTags.CLOUDLET_SUBMIT, cloudlet);
 //			cloudletsSubmitted++;
 //			vmIndex = (vmIndex + 1) % getVmsCreatedList().size();
@@ -401,6 +409,7 @@ public class DatacenterBroker extends SimEntity {
 	    List<ArrayList<Integer>> cAssign=new ArrayList<ArrayList<Integer>>();
 	    
 		createPopulation();
+		writeFile();
 		
 		//initialize fitness of each solution in initial population
 	    for(int i=0;i<solutioncount;i++)
@@ -432,7 +441,7 @@ public class DatacenterBroker extends SimEntity {
 		System.out.println(bestSoln);
 		 
 		//run the iterations for 15 times
-		for(int m=0;m<15;m++)
+		for(int m=0;m<100;m++)
 		{
 		 //to generate new solutions
 		 for(int i=0;i<solutioncount;i++)
@@ -490,7 +499,7 @@ public class DatacenterBroker extends SimEntity {
 		     }
 		 }
 		 fit=checkFitness(bestSoln);
-		 if(m<14)
+		 if(m<99)
 		  {
 		     System.out.println("\nFitness of Best Solution in cycle "+m+" is-"+fit);
 	         System.out.println(bestSoln);
@@ -527,7 +536,7 @@ public class DatacenterBroker extends SimEntity {
 			
 			Log.printLine(CloudSim.clock() + ": " + getName() + ": Sending cloudlet "
 					+ cloudlet.getCloudletId() + " to VM #" + vm.getId());
-			cloudlet.setVmId(vm.getId());
+	        bindCloudletToVm(cloudlet.getCloudletId(),vm.getId());
 			sendNow(getVmsToDatacentersMap().get(vm.getId()), CloudSimTags.CLOUDLET_SUBMIT, cloudlet);
 			cloudletsSubmitted++;
 			vmIndex = (vmIndex + 1);
@@ -556,27 +565,32 @@ public class DatacenterBroker extends SimEntity {
 			    //add a new row to the 2d list.
 				Population.get(i).add(new ArrayList<Integer>());
 		    }
-			//initialize the cloudletcount array to 0
-			Arrays.fill(cloudletCount,0);
-			for(int j=0;j<getCloudletList().size();j++)
-			{
-				int cloudletid=getCloudletList().get(j).getCloudletId();
-						
-				//randomly generating a vm from vmcreatedlist
-				int n=(int)(Math.random()*(getVmsCreatedList().size()));
-						
-				if(cloudletCount[n]<avg)
-				{
-				    //assigning cloudlet to selected vm
-				    Population.get(i).get(n).add(cloudletCount[n],cloudletid);
-				    cloudletCount[n]+=1;
-				}
-				else
-				{
-					j--;
-				}
-			  }
-		 }
+		}
+			
+			//to read from a file
+			readFile();
+			
+//			//initialize the cloudletcount array to 0
+//			Arrays.fill(cloudletCount,0);
+//			for(int j=0;j<getCloudletList().size();j++)
+//			{
+//				int cloudletid=getCloudletList().get(j).getCloudletId();
+//						
+//				//randomly generating a vm from vmcreatedlist
+//				int n=(int)(Math.random()*(getVmsCreatedList().size()));
+//						
+//				if(cloudletCount[n]<avg)
+//				{
+//				    //assigning cloudlet to selected vm
+//				    Population.get(i).get(n).add(cloudletCount[n],cloudletid);
+//				    cloudletCount[n]+=1;
+//				}
+//				else
+//				{
+//					j--;
+//				}
+//			  }
+//		 }
 		//display the initial poplulation
 		System.out.println("\nINITIAL POPULATION-");
 		for(int i=0;i<solutioncount;i++)
@@ -584,6 +598,80 @@ public class DatacenterBroker extends SimEntity {
 			System.out.println("SOLUTION-"+i+" "+Population.get(i));
 		}
 	}
+	
+	//read population from the file
+		protected void readFile() 
+		{
+			try 
+			{	
+				File myObj = new File("InitialPopulation.txt");
+				Scanner myReader = new Scanner(myObj);
+				int q = 0 ;int w =0;
+				while (myReader.hasNextLine()) 
+				{
+					String data = myReader.nextLine();
+					String[] dataSplit = data.trim().split(" ");
+					if(dataSplit.length == 1)
+					{
+						if(dataSplit[0].equals("NEW")) {
+							q++;
+						    w = 0 ;
+						}
+						else if(dataSplit[0].equals(""))
+						{
+							w++;
+						}
+						else
+						{
+							Population.get(q).get(w).add(Integer.parseInt(dataSplit[0].trim()));
+							w++;
+						}
+					}
+					if(dataSplit.length != 1 ) {
+					int[] dataSplitInt = new int[dataSplit.length];
+					for (int i = 0; i < dataSplit.length; i++)
+					{
+						String var1 = dataSplit[i].trim();
+						dataSplitInt[i] = Integer.parseInt(var1);
+						Population.get(q).get(w).add(dataSplitInt[i]);
+					}
+					w++;
+					}
+				} 
+				myReader.close();
+			}
+			catch (FileNotFoundException e) 
+			{
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
+		}
+	
+	//write population to a file
+		protected void writeFile() {
+			try{    
+			    FileWriter fw=new FileWriter("InitialPopulation.txt");    
+			    int element = 0;
+			    String str2;
+			    for(int i=0;i <solutioncount;i++)
+				{
+			    	for(int j=0;j<Population.get(i).size();j++) 
+			        {
+						for(int k = 0; k<Population.get(i).get(j).size();k++) 
+			        	{	
+							element = Population.get(i).get(j).get(k);
+						    str2 = Integer.toString(element); 
+							fw.write(str2);
+							fw.write(" ");
+			        	}
+						fw.write("\n");
+			        }
+			    	fw.write("NEW\n");
+			   	}
+		        fw.close();    
+				}
+				catch(Exception e){System.out.println(e);}
+		}
 	
 	//fitness of any solution
 	protected double checkFitness(ArrayList<ArrayList<Integer>> arr)
@@ -735,11 +823,6 @@ public class DatacenterBroker extends SimEntity {
 		//check the count of vms on which clouldlet is assigned and correct the solution
 		for(int i=0;i<getCloudletList().size();i++)
 		{
-//			if(cloudletAssign.get(i).size()==0)
-//			{
-//				System.out.println(i+" "+cloudletAssign.get(i));
-//				AssignUnassignedCloudlet(i);
-//			}
 			if(cloudletAssign.get(i).size()>1)
 			{
 				deleteMultipleAssignedCloudlet(i,cloudletAssign.get(i));
